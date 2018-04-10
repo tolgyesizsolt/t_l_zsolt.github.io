@@ -1,0 +1,1175 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <style>
+		canvas
+		{
+      float: left;
+      z-index: 0;
+			height:100%;
+			weight:100%;
+		}
+      body {
+        background-color: #000000;
+        margin: 0px;
+        padding: 0px;
+      }
+      #edit{
+        background-color: #FF0000;
+        float:left;
+      }
+      .output{
+        color: white;
+        margin: 5px;
+        bottom: 0;
+        right: 0;
+        z-index: 2;
+        /*background-color: #FF0000;*/
+        position: fixed;
+        height: 60%;
+        width: 390px;
+        overflow-y: auto;
+      }
+      .multiplier
+      {
+        width: 50%;
+        float: left;
+      }
+      .multiplicand
+      {
+        width: 50%;
+        float: left;
+      }
+      .result
+      {
+        width: 50%;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      table, th, td
+      {
+        border: 1px solid white;
+        text-align: center;
+      }
+      canvas
+      {
+        background-color: white;
+
+      }
+    </style>
+  </head>
+  <body>
+
+<!-- Külső elemek meghívása/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/- -->
+
+    <script src="three.min.js"></script>
+    <script src="OrbitControls.js"></script>
+    <script src="dat.gui.min.js"></script>
+
+<!-- THREE.js Webgl script/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/- -->
+
+    <script defer="defer">
+
+// WebGL detector (jelenleg kikommentezve)-------------------------------------
+
+      /*if ( ! Detector.webgl ) Detector.addGetWebGLMessage();*/
+      // revolutions per second
+      //var angularSpeed = 0.03;
+      //var angularSpeed2 = 0.035;
+      //var lastTime = 0;
+
+// Modelleket tartalmazó változók elődefiniálása--------------------------------
+
+      robotkar0 = new THREE.Object3D();
+      robotkar0_1 = new THREE.Object3D();
+      robotkar1 = new THREE.Object3D();
+      robotkar1_1 = new THREE.Object3D();
+      robotkar2 = new THREE.Object3D();
+      robotkar2_1 = new THREE.Object3D();
+      robotkar3 = new THREE.Object3D();
+      robotkar3_1 = new THREE.Object3D();
+      robotkar4 = new THREE.Object3D();
+      robotkar4_1 = new THREE.Object3D();
+      robotkar5 = new THREE.Object3D();
+      robotkar5_1 = new THREE.Object3D();
+      robotkarClamp_1 = new THREE.Object3D();
+      robotkarClamp_2 = new THREE.Object3D();
+      var listOFHelpers = [];
+
+      var originalstring = ["ma11","ma12","ma13","ma14","ma21","ma22","ma23","ma24","ma31","ma32","ma33","ma34","ma41","ma42","ma43","ma44"];
+      var transformstring = ["mb11","mb12","mb13","mb14","mb21","mb22","mb23","mb24","mb31","mb32","mb33","mb34","mb41","mb42","mb43","mb44"];
+      var resultstring = ["mc11","mc12","mc13","mc14","mc21","mc22","mc23","mc24","mc31","mc32","mc33","mc34","mc41","mc42","mc43","mc44"];
+
+// WebGL megjelenítőhöz felhasznált paraméterek---------------------------------
+      var parent, renderer, scene, camera, controls;
+
+// Főmenü definiálása-----------------------------------------------------------
+      var gui = new dat.GUI({width: 390});
+
+
+// Főmenü paraméterei-----------------------------------------------------------
+      var parameters =
+      {
+        forgatas: false, // boolean (checkbox)
+        showHelper: false,
+        Part1rotation : 0.00,
+        Part2rotation : 0.00,
+        Part3rotation : 0.00,
+        Part4rotation : 0.00,
+        Part5rotation : 0.00,
+        Clamp:0,
+        reset: function() { resetModell() },
+      };
+
+// Paraméterek hozzáadása és kiegészitése qa GUI-hoz--------------------------
+        
+
+        var foldermain = gui.addFolder('Főadatok');/*Folder*/
+
+        foldermain.add( parameters, 'forgatas' ).name('Modell forgatása');
+        foldermain.add( parameters, 'showHelper' ).name('Segéd megjelnítése');
+
+        var Part1rot = foldermain.add(parameters, 'Part1rotation',-360,360).name('Első rész z körüli forgatása').listen();/*Modell forgatása*/
+        Part1rot.onChange(function(value) // onFinishChange
+        {tr1(value)});
+        var Part2rot = foldermain.add(parameters, 'Part2rotation',-360,360).name('Második rész z körüli forgatása').listen();/*Modell forgatása*/
+        Part2rot.onChange(function(value) // onFinishChange
+        {tr2(value)});
+        var Part3rot = foldermain.add(parameters, 'Part3rotation',-360,360).name('Harmadik rész z körüli forgatása').listen();/*Modell forgatása*/
+        Part3rot.onChange(function(value) // onFinishChange
+        {tr3(value)});
+        var Part4rot = foldermain.add(parameters, 'Part4rotation',-360,360).name('Negyedik rész z körüli forgatása').listen();/*Modell forgatása*/
+        Part4rot.onChange(function(value) // onFinishChange
+        {tr4(value)});
+        var Part5rot = foldermain.add(parameters, 'Part5rotation',-360,360).name('Ötödik rész z körüli forgatása').listen();/*Modell forgatása*/
+        Part5rot.onChange(function(value) // onFinishChange
+        {tr5(value)});
+        var PartClamprot = foldermain.add(parameters, 'Clamp',0,30).name('Fogó nyitottsága').listen();/*Modell forgatása*/
+        PartClamprot.onChange(function(value) // onFinishChange
+        {tr6(value)});
+
+        foldermain.add( parameters, 'reset' ).name("Kamera nézet alapállapot");
+
+        foldermain.open();
+
+// Modell eredeti pozícióba helyezése(valójában a kamera kerül a kezdőállapotba)------------------
+        function resetModell()
+        {
+          camera.position.z = 40;
+          camera.position.x = 0;
+          camera.position.y = 20;
+          parent.rotation.y = 0;
+          controls.center.x = 0;
+          controls.center.y = 0;
+          controls.center.z = 0;
+        }
+
+      init();
+      animate();
+
+      function init() {
+
+        renderer = new THREE.WebGLRenderer({ antialias:true, preserveDrawingBuffer: true});
+        renderer.setSize(window.innerWidth-400, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // scene
+        var path = "tex/env/";
+        var format = '.png';
+        var urls = [
+            path + 'px' + format, path + 'nx' + format,
+            path + 'py' + format, path + 'ny' + format,
+            path + 'pz' + format, path + 'nz' + format
+          ];
+
+        var reflectionCube = new THREE.CubeTextureLoader().load( urls );
+        reflectionCube.format = THREE.RGBFormat;
+        scene = new THREE.Scene();
+        scene.background = reflectionCube;
+
+        // camera
+        camera = new THREE.PerspectiveCamera(45, (window.innerWidth-400) / window.innerHeight, 0.1, 100);
+        camera.position.z = 40;
+        camera.position.y = 20;
+        camera.position.x = 0;
+
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+        parent = new THREE.Object3D();
+        parent.name = "absolutparent";
+        scene.add(parent);
+
+        var pivot = new THREE.Object3D();
+        pivot.rotation.x = degrees_to_radians(-90);
+        pivot.name = "holder";
+        pivot.rotation.y = 0;
+        parent.add(pivot);
+
+        var geometry = new THREE.PlaneGeometry( 50, 50, 10 );
+        var planemat = new THREE.MeshPhongMaterial(
+            {
+              //ambient: 0x555555,
+              color: 0x555555,
+              specular: 0x010101,
+              shininess: 50,
+              side: THREE.DoubleSide
+            });
+        var plane = new THREE.Mesh( geometry, planemat );
+        scene.add( plane );
+        pivot.add(plane);
+        //plane.castShadow = true;
+        plane.receiveShadow = true;
+
+
+//Objektumok betöltése/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/
+
+// Part0 betöltése----------------------------------------------------------
+        var loader = new THREE.JSONLoader();
+        loader.load("modell_robotkar/robotkar0.json" , function(geometry)
+        {
+          var material_robotkar0 = new THREE.MeshPhongMaterial(
+            {
+              //ambient: 0x555555,
+              color: 0xE77C00,
+              specular: 0x010101,
+              shininess: 800,
+              envMap: reflectionCube,
+              combine: THREE.MixOperation,
+              reflectivity: 0.25
+            });
+            robotkar0 = new THREE.Mesh(geometry, material_robotkar0);
+            robotkar0.name = "robotkar0";
+
+            var robotkar0_axis = new THREE.AxisHelper(10);
+            robotkar0.add(robotkar0_axis);
+            robotkar0_axis.visible = false;
+            listOFHelpers.push(robotkar0_axis);
+
+ 
+            scene.add(robotkar0);
+
+            pivot.add(robotkar0);
+
+            robotkar0.castShadow = true;
+            robotkar0.receiveShadow = true;
+        });
+// Part0_1 betöltése----------------------------------------------------------
+        loader.load( "modell_robotkar/robotkar0_1.json", function(geometry)
+        {
+          var material_robotkar0_1 = new THREE.MeshLambertMaterial(
+            { 
+              color: 0xffffff,
+              envMap: reflectionCube
+            });
+            robotkar0_1 = new THREE.Mesh(geometry, material_robotkar0_1);
+            robotkar0_1.name = "robotkar0_1";
+
+            var robotkar0_1_axis = new THREE.AxisHelper(10);
+            robotkar0_1.add(robotkar0_1_axis);
+            robotkar0_1_axis.visible = false;
+            listOFHelpers.push(robotkar0_1_axis);
+ 
+            scene.add(robotkar0_1);
+
+            pivot.add(robotkar0_1);
+
+            robotkar0_1.castShadow = true;
+            robotkar0_1.receiveShadow = true;
+        });
+// Part1 betöltése----------------------------------------------------------
+        loader.load( "modell_robotkar/robotkar1.json", function(geometry)
+        {
+          var material_robotkar1 = new THREE.MeshPhongMaterial(
+            {
+              //ambient: 0x555555,
+              color: 0xE77C00,
+              specular: 0x010101,
+              shininess: 800,
+              envMap: reflectionCube,
+              combine: THREE.MixOperation,
+              reflectivity: 0.25
+            });
+            robotkar1 = new THREE.Mesh(geometry, material_robotkar1);
+            robotkar1.name = "robotkar1";
+
+            var robotkar1_axis = new THREE.AxisHelper(10);
+            robotkar1.add(robotkar1_axis);
+            robotkar1_axis.visible = false;
+            listOFHelpers.push(robotkar1_axis);
+ 
+            scene.add(robotkar1);
+
+            pivot.add(robotkar1);
+
+            robotkar1.castShadow = true;
+            robotkar1.receiveShadow = true;
+        });
+// Part1_1 betöltése----------------------------------------------------------
+        loader.load( "modell_robotkar/robotkar1_1.json", function(geometry)
+        {
+          var material_robotkar1_1 = new THREE.MeshLambertMaterial(
+            { 
+              color: 0xffffff,
+              envMap: reflectionCube
+            });
+            robotkar1_1 = new THREE.Mesh(geometry, material_robotkar1_1);
+            robotkar1_1.name = "robotkar1_1";
+
+            var robotkar1_1_axis = new THREE.AxisHelper(10);
+            robotkar1_1.add(robotkar1_1_axis);
+            robotkar1_1_axis.visible = false;
+            listOFHelpers.push(robotkar1_1_axis);
+ 
+            scene.add(robotkar1_1);
+
+            robotkar1.add(robotkar1_1);
+
+            robotkar1_1.castShadow = true;
+            robotkar1_1.receiveShadow = true;
+        });
+// Part2 betöltése----------------------------------------------------------
+        loader.load( "modell_robotkar/robotkar2.json", function(geometry)
+        {
+          var material_robotkar2 = new THREE.MeshPhongMaterial(
+            { 
+              //ambient: 0x555555,
+              color: 0xE77C00,
+              specular: 0x010101,
+              shininess: 800,
+              envMap: reflectionCube,
+              combine: THREE.MixOperation,
+              reflectivity: 0.25
+            });
+            robotkar2 = new THREE.Mesh(geometry, material_robotkar2);
+            robotkar2.name = "robotkar2";
+
+            var robotkar2_axis = new THREE.AxisHelper(10);
+            robotkar2.add(robotkar2_axis);
+            robotkar2_axis.visible = false;
+            listOFHelpers.push(robotkar2_axis);
+
+            robotkar2.rotation.x = degrees_to_radians(90);
+            robotkar2.position.y = -1.71449;
+            robotkar2.position.z = 5.5348;
+ 
+            scene.add(robotkar2);
+
+            pivot.add(robotkar2);
+
+            robotkar2.castShadow = true;
+            robotkar2.receiveShadow = true;
+        });
+// Part2_1 betöltése----------------------------------------------------------
+        loader.load( "modell_robotkar/robotkar2_1.json", function(geometry)
+        {
+          var material_robotkar2_1 = new THREE.MeshLambertMaterial(
+            { 
+              color: 0xffffff,
+              envMap: reflectionCube
+            });
+            robotkar2_1 = new THREE.Mesh(geometry, material_robotkar2_1);
+            robotkar2_1.name = "robotkar2_1";
+
+            var robotkar2_1_axis = new THREE.AxisHelper(10);
+            robotkar2_1.add(robotkar2_1_axis);
+            robotkar2_1_axis.visible = false;
+            listOFHelpers.push(robotkar2_1_axis);
+ 
+            scene.add(robotkar2_1);
+
+            robotkar2.add(robotkar2_1);
+
+            robotkar2_1.castShadow = true;
+            robotkar2_1.receiveShadow = true;
+        });
+// Part3 betöltése----------------------------------------------------------
+        loader.load( "modell_robotkar/robotkar3.json", function(geometry)
+        {
+          var material_robotkar3 = new THREE.MeshPhongMaterial(
+            { 
+              //ambient: 0x555555,
+              color: 0xE77C00,
+              specular: 0x010101,
+              shininess: 800,
+              envMap: reflectionCube,
+              combine: THREE.MixOperation,
+              reflectivity: 0.25
+            });
+            robotkar3 = new THREE.Mesh(geometry, material_robotkar3);
+            robotkar3.name = "robotkar3";
+
+            var robotkar3_axis = new THREE.AxisHelper(10);
+            robotkar3.add(robotkar3_axis);
+            robotkar3_axis.visible = false;
+            listOFHelpers.push(robotkar3_axis);
+
+            robotkar3.rotation.x = degrees_to_radians(90);
+            robotkar3.position.x = 3.55838;
+            robotkar3.position.y = -3.46;
+            robotkar3.position.z = 5.5348;
+ 
+            scene.add(robotkar3);
+
+            pivot.add(robotkar3);
+
+            robotkar3.castShadow = true;
+            robotkar3.receiveShadow = true;
+        });
+// Part3_1 betöltése----------------------------------------------------------
+        loader.load( "modell_robotkar/robotkar3_1.json", function(geometry)
+        {
+          var material_robotkar3_1 = new THREE.MeshLambertMaterial(
+            { 
+              color: 0xffffff,
+              envMap: reflectionCube
+            });
+            robotkar3_1 = new THREE.Mesh(geometry, material_robotkar3_1);
+            robotkar3_1.name = "robotkar3_1";
+
+            var robotkar3_1_axis = new THREE.AxisHelper(10);
+            robotkar3_1.add(robotkar3_1_axis);
+            robotkar3_1_axis.visible = false;
+            listOFHelpers.push(robotkar3_1_axis);
+ 
+            scene.add(robotkar3_1);
+
+            robotkar3.add(robotkar3_1);
+
+            robotkar3_1.castShadow = true;
+            robotkar3_1.receiveShadow = true;
+        });
+// Part4 betöltése----------------------------------------------------------
+        loader.load( "modell_robotkar/robotkar4.json", function(geometry)
+        {
+          var material_robotkar4 = new THREE.MeshPhongMaterial(
+            { 
+              //ambient: 0x555555,
+              color: 0xE77C00,
+              specular: 0x010101,
+              shininess: 800,
+              envMap: reflectionCube,
+              combine: THREE.MixOperation,
+              reflectivity: 0.25
+            });
+            robotkar4 = new THREE.Mesh(geometry, material_robotkar4);
+            robotkar4.name = "robotkar4";
+
+            var robotkar4_axis = new THREE.AxisHelper(10);
+            robotkar4.add(robotkar4_axis);
+            robotkar4_axis.visible = false;
+            listOFHelpers.push(robotkar4_axis);
+
+            robotkar4.position.y = -3.46;
+            robotkar4.position.z = 7.43185;
+            robotkar4.position.x = 7.11676;
+ 
+            scene.add(robotkar4);
+
+            pivot.add(robotkar4);
+
+            robotkar4.castShadow = true;
+            robotkar4.receiveShadow = true;
+        });
+// Part4_1 betöltése----------------------------------------------------------
+        loader.load( "modell_robotkar/robotkar4_1.json", function(geometry)
+        {
+          var material_robotkar4_1 = new THREE.MeshLambertMaterial(
+            { 
+              color: 0xffffff,
+              envMap: reflectionCube
+            });
+            robotkar4_1 = new THREE.Mesh(geometry, material_robotkar4_1);
+            robotkar4_1.name = "robotkar4_1";
+
+            var robotkar4_1_axis = new THREE.AxisHelper(10);
+            robotkar4_1.add(robotkar4_1_axis);
+            robotkar4_1_axis.visible = false;
+            listOFHelpers.push(robotkar4_1_axis);
+ 
+            scene.add(robotkar4_1);
+
+            robotkar4.add(robotkar4_1);
+
+            robotkar4_1.castShadow = true;
+            robotkar4_1.receiveShadow = true;
+        });
+// Part5 betöltése----------------------------------------------------------
+        loader.load( "modell_robotkar/robotkar5.json", function(geometry)
+        {
+          var material_robotkar5 = new THREE.MeshPhongMaterial(
+            { 
+              //ambient: 0x555555,
+              color: 0xE77C00,
+              specular: 0x010101,
+              shininess: 800,
+              envMap: reflectionCube,
+              combine: THREE.MixOperation,
+              reflectivity: 0.25
+            });
+            robotkar5 = new THREE.Mesh(geometry, material_robotkar5);
+            robotkar5.name = "robotkar5";
+
+            var robotkar5_axis = new THREE.AxisHelper(10);
+            robotkar5.add(robotkar5_axis);
+            robotkar5_axis.visible = false;
+            listOFHelpers.push(robotkar5_axis);
+
+            robotkar5.position.y = -3.46;
+            robotkar5.position.z = 8.99867;
+            robotkar5.position.x = 10.6751;
+ 
+            scene.add(robotkar5);
+
+            pivot.add(robotkar5);
+
+            robotkar5.castShadow = true;
+            robotkar5.receiveShadow = true;
+        });
+// Part5_1 betöltése----------------------------------------------------------
+        loader.load( "modell_robotkar/robotkar5_1.json", function(geometry)
+        {
+          var material_robotkar5_1 = new THREE.MeshLambertMaterial(
+            { 
+              color: 0xffffff,
+              envMap: reflectionCube
+            });
+            robotkar5_1 = new THREE.Mesh(geometry, material_robotkar5_1);
+            robotkar5_1.name = "robotkar5_1";
+
+            var robotkar5_1_axis = new THREE.AxisHelper(10);
+            robotkar4_1.add(robotkar5_1_axis);
+            robotkar5_1_axis.visible = false;
+            listOFHelpers.push(robotkar5_1_axis);
+ 
+            scene.add(robotkar5_1);
+
+            robotkar5.add(robotkar5_1);
+
+            robotkar5_1.castShadow = true;
+            robotkar5_1.receiveShadow = true;
+        });
+// Clamp1 betöltése----------------------------------------------------------
+        loader.load( "modell_robotkar/robotkarClamp_1.json", function(geometry)
+        {
+          var material_robotkarClamp_1 = new THREE.MeshPhongMaterial(
+            { 
+              //ambient: 0x555555,
+              color: 0x5EBAE7,
+              specular: 0x010101,
+              shininess: 800,
+              envMap: reflectionCube,
+              combine: THREE.MixOperation,
+              reflectivity: 0.25
+            });
+            robotkarClamp_1 = new THREE.Mesh(geometry, material_robotkarClamp_1);
+            robotkarClamp_1.name = "robotkarClamp_1";
+
+            var robotkarClamp_1_axis = new THREE.AxisHelper(10);
+            robotkarClamp_1.add(robotkarClamp_1_axis);
+            robotkarClamp_1_axis.visible = false;
+            listOFHelpers.push(robotkarClamp_1_axis);
+
+            robotkarClamp_1.position.x = 14.2335;
+            robotkarClamp_1.position.y = -3.46;
+            robotkarClamp_1.position.z = 10.0838;
+ 
+            scene.add(robotkarClamp_1);
+
+            pivot.add(robotkarClamp_1);
+
+            robotkarClamp_1.castShadow = true;
+            robotkarClamp_1.receiveShadow = true;
+        });
+// Clamp2 betöltése----------------------------------------------------------
+        loader.load( "modell_robotkar/robotkarClamp_2.json", function(geometry)
+        {
+          var material_robotkarClamp_2 = new THREE.MeshPhongMaterial(
+            { 
+              //ambient: 0x555555,
+              color: 0x5EBAE7,
+              specular: 0x010101,
+              shininess: 800,
+              envMap: reflectionCube,
+              combine: THREE.MixOperation,
+              reflectivity: 0.25
+            });
+            robotkarClamp_2 = new THREE.Mesh(geometry, material_robotkarClamp_2);
+            robotkarClamp_2.name = "robotkarClamp_2";
+
+            var robotkarClamp_2_axis = new THREE.AxisHelper(10);
+            robotkarClamp_2.add(robotkarClamp_2_axis);
+            robotkarClamp_2_axis.visible = false;
+            listOFHelpers.push(robotkarClamp_2_axis);
+
+            robotkarClamp_2.position.x = 14.2335;
+            robotkarClamp_2.position.y = -3.46;
+            robotkarClamp_2.position.z = 10.0838;
+ 
+            scene.add(robotkarClamp_2);
+
+            pivot.add(robotkarClamp_2);
+
+            robotkarClamp_2.castShadow = true;
+            robotkarClamp_2.receiveShadow = true;
+        });
+
+//Objektumok betöltése/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/
+
+// Fények hozzáadása-----------------------------------------------------------------
+
+      // change the direction this spotlight is facing
+        var lightTarget = new THREE.Object3D();
+        lightTarget.name = "ltarget1";
+        lightTarget.position.set(10,10,10);
+        scene.add(lightTarget);
+
+        // add subtle ambient lighting
+        var ambientLight = new THREE.AmbientLight(0x555555);
+        scene.add(ambientLight);
+
+        var spotLight = new THREE.SpotLight( 0x9B907E );
+        spotLight.position.set( -25, 50, -50 );
+
+        spotLight.angle = degrees_to_radians(60);
+        spotLight.penumbra = 0.05;
+
+        spotLight.castShadow = true;
+
+        spotLight.shadowMapWidth = 1024;
+        spotLight.shadowMapHeight = 1024;
+
+        spotLight.shadowCameraNear =1;
+        spotLight.shadowCameraFar = 4000;
+        spotLight.shadowCameraFov = 5;
+
+        spotLight.target = lightTarget;
+
+        scene.add( spotLight );
+
+        //var spotLightHelper = new THREE.SpotLightHelper( spotLight );
+        //scene.add( spotLightHelper );
+
+
+        var spotLight2 = new THREE.SpotLight( 0x5B6D72 );
+        spotLight2.position.set( 25, 25, -50 );
+        spotLight2.angle = degrees_to_radians(85);
+        spotLight2.penumbra = 0.05;
+
+        //spotLight2.castShadow = true;
+
+        spotLight2.shadowMapWidth = 1024;
+        spotLight2.shadowMapHeight = 1024;
+
+        spotLight2.shadowCameraNear =1;
+        spotLight2.shadowCameraFar = 4000;
+        spotLight2.shadowCameraFov = 20;
+
+        spotLight2.target = lightTarget;
+
+        scene.add( spotLight2 );
+
+        //var spotLightHelper2 = new THREE.SpotLightHelper( spotLight2 );
+        //scene.add( spotLightHelper2 );
+
+        var spotLight3 = new THREE.SpotLight( 0xffffff );
+        spotLight3.position.set( 25, 25, 50 );
+        spotLight3.angle = degrees_to_radians(85);
+        spotLight3.penumbra = 0.05;
+
+        //spotLight3.castShadow = true;
+
+        spotLight3.shadowMapWidth = 1024;
+        spotLight3.shadowMapHeight = 1024;
+
+        spotLight3.shadowCameraNear =1;
+        spotLight3.shadowCameraFar = 4000;
+        spotLight3.shadowCameraFov = 1;
+
+        scene.add( spotLight3 );
+
+        //var spotLightHelper3 = new THREE.SpotLightHelper( spotLight3 );
+        //scene.add( spotLightHelper3 )
+
+        spotLight3.target = lightTarget;
+
+      }
+
+      // this function is executed on each animation frame
+      function animate() {
+        if (parameters.forgatas) {parent.rotation.y += 0.01;};
+
+        setHelpers();
+
+        requestAnimationFrame( animate );
+        render();
+        update();
+      }
+      function update()
+      {
+        controls.update();
+      }
+
+      function render()
+      {
+        renderer.render( scene, camera );
+      }
+
+      function degrees_to_radians(degrees)
+      {
+        var pi = Math.PI;
+        return degrees * (pi/180);
+      }
+
+      function vectorlength(x,y,z)
+      {
+        return Math.sqrt(Math.pow(x,2)+Math.pow(y,2)+Math.pow(z,2));
+      }
+
+      function setHelpers()
+      {
+        listOFHelpers.forEach(function(helper){
+          helper.visible = parameters.showHelper;
+        });
+      }
+
+      function RoundTo2Prec(number){
+        return Math.round(number * 100) / 100
+      }
+
+      function tr1(rotdegree)
+      {
+        //console.log(originalstring[0]);
+        getTransform(new THREE.Matrix4().identity(),originalstring);
+        part1transform(rotdegree);
+        var rotationmatrix = new THREE.Matrix4().makeRotationZ(degrees_to_radians(rotdegree));
+        getTransform(rotationmatrix,transformstring);
+        getTransform(robotkar1.matrix,resultstring);
+      }
+      function tr2(rotdegree)
+      {
+        getTransform(robotkar1.matrix,originalstring);
+        part2transform(rotdegree);
+        var rotationalpha = new THREE.Matrix4().makeRotationX(degrees_to_radians(90));
+        var translatematrix = new THREE.Matrix4().makeTranslation ( 0, 5.5348, 1.71449 ) 
+        var rotationmatrix = new THREE.Matrix4().makeRotationZ(degrees_to_radians(rotdegree));
+        getTransform(rotationalpha.multiply(translatematrix).multiply(rotationmatrix),transformstring);
+        getTransform(robotkar2.matrix,resultstring);
+      }
+      function tr3(rotdegree)
+      {
+        getTransform(robotkar2.matrix,originalstring);
+        part3transform(rotdegree);
+        var translatematrix = new THREE.Matrix4().makeTranslation ( 3.55838, 0, 1.74551 );
+        var rotationmatrix = new THREE.Matrix4().makeRotationZ(degrees_to_radians(rotdegree));
+        getTransform(translatematrix.multiply(rotationmatrix),transformstring);
+        getTransform(robotkar3.matrix,resultstring);
+      }
+      function tr4(rotdegree)
+      {
+        getTransform(robotkar3.matrix,originalstring);
+        part4transform(rotdegree);
+        var rotationalpha = new THREE.Matrix4().makeRotationX(degrees_to_radians(-90));
+        var translatematrix = new THREE.Matrix4().makeTranslation ( 3.55838, 0, 1.74551 );
+        var rotationmatrix = new THREE.Matrix4().makeRotationZ(degrees_to_radians(rotdegree));
+        getTransform(rotationalpha.multiply(translatematrix).multiply(rotationmatrix),transformstring);
+        getTransform(robotkar4.matrix,resultstring);
+      }
+      function tr5(rotdegree)
+      {
+        getTransform(robotkar4.matrix,originalstring);
+        part5transform(rotdegree);
+        var translatematrix = new THREE.Matrix4().makeTranslation ( 3.55838, 0, 1.56682 );
+        var rotationmatrix = new THREE.Matrix4().makeRotationZ(degrees_to_radians(rotdegree));
+        getTransform(translatematrix.multiply(rotationmatrix),transformstring);
+        getTransform(robotkar5.matrix,resultstring);
+      }
+      function tr6(rotdegree)
+      {
+        getTransform(robotkar5.matrix,originalstring);
+        partClamptransform(rotdegree);
+        var translatematrix = new THREE.Matrix4().makeTranslation ( 3.55838, 0, 1.08513 );
+        var rotationmatrix = new THREE.Matrix4().makeRotationZ(-degrees_to_radians(rotdegree));
+        getTransform(translatematrix.multiply(rotationmatrix),transformstring);
+        getTransform(robotkarClamp_1.matrix,resultstring);
+      }
+
+      function getTransform(matrix,stringarray)
+      {
+        document.getElementsByName(stringarray[0])[0].innerHTML = RoundTo2Prec(matrix.elements[0]);
+        document.getElementsByName(stringarray[1])[0].innerHTML = RoundTo2Prec(matrix.elements[4]);
+        document.getElementsByName(stringarray[2])[0].innerHTML = RoundTo2Prec(matrix.elements[8]);
+        document.getElementsByName(stringarray[3])[0].innerHTML = RoundTo2Prec(matrix.elements[12]);
+        document.getElementsByName(stringarray[4])[0].innerHTML = RoundTo2Prec(matrix.elements[1]);
+        document.getElementsByName(stringarray[5])[0].innerHTML = RoundTo2Prec(matrix.elements[5]);
+        document.getElementsByName(stringarray[6])[0].innerHTML = RoundTo2Prec(matrix.elements[9]);
+        document.getElementsByName(stringarray[7])[0].innerHTML = RoundTo2Prec(matrix.elements[13]);
+        document.getElementsByName(stringarray[8])[0].innerHTML = RoundTo2Prec(matrix.elements[2]);
+        document.getElementsByName(stringarray[9])[0].innerHTML = RoundTo2Prec(matrix.elements[6]);
+        document.getElementsByName(stringarray[10])[0].innerHTML = RoundTo2Prec(matrix.elements[10]);
+        document.getElementsByName(stringarray[11])[0].innerHTML = RoundTo2Prec(matrix.elements[14]);
+        document.getElementsByName(stringarray[12])[0].innerHTML = RoundTo2Prec(matrix.elements[3]);
+        document.getElementsByName(stringarray[13])[0].innerHTML = RoundTo2Prec(matrix.elements[7]);
+        document.getElementsByName(stringarray[14])[0].innerHTML = RoundTo2Prec(matrix.elements[11]);
+        document.getElementsByName(stringarray[15])[0].innerHTML = RoundTo2Prec(matrix.elements[15]);
+      }
+
+      function part1transform(rotdegree)
+      {
+        document.getElementsByName("theta1")[0].innerHTML = RoundTo2Prec(rotdegree);
+        robotkar1.matrixAutoUpdate = false;
+        //console.log(RoundTo2Prec(robotkar1.matrix.elements[0]));
+
+        var rotation = degrees_to_radians(rotdegree);
+
+        var rotationmatrix = new THREE.Matrix4().makeRotationZ(rotation);
+
+        robotkar1.matrix = rotationmatrix
+        part2transform(parameters.Part2rotation);
+
+      }
+
+      function part2transform(rotdegree)
+      {
+        document.getElementsByName("theta2")[0].innerHTML = RoundTo2Prec(rotdegree);
+        robotkar2.matrixAutoUpdate = false;
+
+        var rotation = degrees_to_radians(rotdegree);
+
+        var part1transform = robotkar1.matrix.clone();
+        var rotationalpha = new THREE.Matrix4().makeRotationX(degrees_to_radians(90));
+        var translatematrix = new THREE.Matrix4().makeTranslation ( 0, 5.5348, 1.71449 ) 
+        var rotationmatrix = new THREE.Matrix4().makeRotationZ(rotation);
+
+        document.getElementsByName("B1")[0].innerHTML = RoundTo2Prec(vectorlength(0, 5.5348, 1.71449));
+
+        robotkar2.matrix = part1transform.multiply(rotationalpha).multiply(translatematrix).multiply(rotationmatrix);
+        part3transform(parameters.Part3rotation);
+      }
+
+      function part3transform(rotdegree)
+      {
+        document.getElementsByName("theta3")[0].innerHTML = RoundTo2Prec(rotdegree);
+        robotkar3.matrixAutoUpdate = false;
+
+        var rotation = degrees_to_radians(rotdegree);
+
+        var part2transform = robotkar2.matrix.clone();
+        var translatematrix = new THREE.Matrix4().makeTranslation ( 3.55838, 0, 1.74551 );
+        var rotationmatrix = new THREE.Matrix4().makeRotationZ(rotation);
+
+        document.getElementsByName("A2")[0].innerHTML = RoundTo2Prec(vectorlength( 3.55838, 0, 1.74551 ));
+
+        robotkar3.matrix = part2transform.multiply(translatematrix).multiply(rotationmatrix);
+        part4transform(parameters.Part4rotation);
+      }
+
+      function part4transform(rotdegree)
+      {
+        document.getElementsByName("theta4")[0].innerHTML = RoundTo2Prec(rotdegree);
+        robotkar4.matrixAutoUpdate = false;
+
+        var rotation = degrees_to_radians(rotdegree);
+
+        var part3transform = robotkar3.matrix.clone();
+        var rotationalpha = new THREE.Matrix4().makeRotationX(degrees_to_radians(-90));
+        var translatematrix = new THREE.Matrix4().makeTranslation ( 3.55838, 0, 1.74551 );
+        var rotationmatrix = new THREE.Matrix4().makeRotationZ(rotation);
+
+        document.getElementsByName("A3")[0].innerHTML = RoundTo2Prec(vectorlength( 3.55838, 0, 1.74551 ));
+
+        robotkar4.matrix = part3transform.multiply(rotationalpha).multiply(translatematrix).multiply(rotationmatrix);
+        part5transform(parameters.Part5rotation);
+      }
+
+      function part5transform(rotdegree)
+      {
+        document.getElementsByName("theta5")[0].innerHTML = RoundTo2Prec(rotdegree);
+        robotkar5.matrixAutoUpdate = false;
+
+        var rotation = degrees_to_radians(rotdegree);
+
+        var part4transform = robotkar4.matrix.clone();
+        var translatematrix = new THREE.Matrix4().makeTranslation ( 3.55838, 0, 1.56682 );
+        var rotationmatrix = new THREE.Matrix4().makeRotationZ(rotation);
+
+        document.getElementsByName("A4")[0].innerHTML = RoundTo2Prec(vectorlength( 3.55838, 0, 1.56682 ));
+
+        robotkar5.matrix = part4transform.multiply(translatematrix).multiply(rotationmatrix);
+        partClamptransform(parameters.Clamp);
+      }
+
+      function partClamptransform(rotdegree)
+      {
+        document.getElementsByName("theta6")[0].innerHTML = RoundTo2Prec(rotdegree);
+        robotkarClamp_1.matrixAutoUpdate = false;
+        robotkarClamp_2.matrixAutoUpdate = false;
+
+        var rotation = degrees_to_radians(rotdegree);
+
+        var part5transform = robotkar5.matrix.clone();
+        var part5transform2 = robotkar5.matrix.clone();
+        var translatematrix = new THREE.Matrix4().makeTranslation ( 3.55838, 0, 1.08513 );
+        var translatematrix2 = new THREE.Matrix4().makeTranslation ( 3.55838, 0, 1.08513 );
+        var rotationmatrix = new THREE.Matrix4().makeRotationZ(-rotation);
+        var rotationmatrix2 = new THREE.Matrix4().makeRotationZ(rotation);
+
+        document.getElementsByName("A5")[0].innerHTML = RoundTo2Prec(vectorlength( 3.55838, 0, 1.08513 ));
+
+        robotkarClamp_1.matrix = part5transform.multiply(translatematrix).multiply(rotationmatrix);
+        robotkarClamp_2.matrix = part5transform2.multiply(translatematrix2).multiply(rotationmatrix2);
+      }
+
+    </script>
+    <div class="output">
+      <div class="DH_table">
+      <h4>Denavit-Hartenberg táblázat</h4>
+       <table class="results">
+        <tr>
+          <th>Transzformáció</th>
+          <th>Qi</th>
+          <th>ϑ</th>
+          <th>B</th>
+          <th>A</th>
+          <th>Alfa</th>
+        </tr>
+        <tr>
+          <td>01</td>
+          <td>ϑ1</td>
+          <td name = "theta1">0</td>
+          <td name = "B1">0</td>
+          <td >0</td>
+          <td>0</td>
+        </tr>
+        <tr>
+          <td>12</td>
+          <td>ϑ2</td>
+          <td name = "theta2">0</td>
+          <td >0</td>
+          <td name = "A2">0</td>
+          <td>90</td>
+        </tr>
+        <tr>
+          <td>23</td>
+          <td>ϑ3</td>
+          <td name = "theta3">0</td>
+          <td >0</td>
+          <td name = "A3">0</td>
+          <td>0</td>
+        </tr>
+        <tr>
+          <td>34</td>
+          <td>ϑ4</td>
+          <td name = "theta4">0</td>
+          <td >0</td>
+          <td name = "A4">0</td>
+          <td>-90</td>
+        </tr>
+        <tr>
+          <td>45</td>
+          <td>ϑ5</td>
+          <td name = "theta5">0</td>
+          <td >0</td>
+          <td name = "A5">0</td>
+          <td>0</td>
+        </tr>
+        <tr>
+          <td>56</td>
+          <td>ϑ6</td>
+          <td name = "theta6">0</td>
+          <td >0</td>
+          <td name = "A6">0</td>
+          <td>0</td>
+        </tr>
+      </table> 
+    </div>
+      <div class="multiplicand">
+      <h4>Szorzandó mátrix</h4>
+        <table class="results">
+        <tr>
+          <td name = "ma11">
+          0
+          </td>
+          <td name = "ma12">
+          0
+          </td>
+          <td name = "ma13">
+          0
+          </td>
+          <td name = "ma14">
+          0
+          </td>
+        </tr>
+        <tr>
+          <td name = "ma21">
+          0
+          </td>
+          <td name = "ma22">
+          0
+          </td>
+          <td name = "ma23">
+          0
+          </td>
+          <td name = "ma24">
+          0
+          </td>
+        </tr>
+        <tr>
+          <td name = "ma31">
+          0
+          </td>
+          <td name = "ma32">
+          0
+          </td>
+          <td name = "ma33">
+          0
+          </td>
+          <td name = "ma34">
+          0
+          </td>
+        </tr>
+        <tr>
+          <td name = "ma41">
+          0
+          </td>
+          <td name = "ma42">
+          0
+          </td>
+          <td name = "ma43">
+          0
+          </td>
+          <td name = "ma44">
+          0
+          </td>
+        </tr>
+      </table> 
+      </div>
+      <div class="multiplier">
+      <h4>Szorzó mátrix</h4>
+      <table class="results">
+        <tr>
+          <td name = "mb11">
+          0
+          </td>
+          <td name = "mb12">
+          0
+          </td>
+          <td name = "mb13">
+          0
+          </td>
+          <td name = "mb14">
+          0
+          </td>
+        </tr>
+        <tr>
+          <td name = "mb21">
+          0
+          </td>
+          <td name = "mb22">
+          0
+          </td>
+          <td name = "mb23">
+          0
+          </td>
+          <td name = "mb24">
+          0
+          </td>
+        </tr>
+        <tr>
+          <td name = "mb31">
+          0
+          </td>
+          <td name = "mb32">
+          0
+          </td>
+          <td name = "mb33">
+          0
+          </td>
+          <td name = "mb34">
+          0
+          </td>
+        </tr>
+        <tr>
+          <td name = "mb41">
+          0
+          </td>
+          <td name = "mb42">
+          0
+          </td>
+          <td name = "mb43">
+          0
+          </td>
+          <td name = "mb44">
+          0
+          </td>
+        </tr>
+      </table> 
+      </div>
+      <div class="result">
+      <h4>Eredmény mátrix</h4>
+        <table>
+        <tr>
+          <td name = "mc11">
+          0
+          </td>
+          <td name = "mc12">
+          0
+          </td>
+          <td name = "mc13">
+          0
+          </td>
+          <td name = "mc14">
+          0
+          </td>
+        </tr>
+        <tr>
+          <td name = "mc21">
+          0
+          </td>
+          <td name = "mc22">
+          0
+          </td>
+          <td name = "mc23">
+          0
+          </td>
+          <td name = "mc24">
+          0
+          </td>
+        </tr>
+        <tr>
+          <td name = "mc31">
+          0
+          </td>
+          <td name = "mc32">
+          0
+          </td>
+          <td name = "mc33">
+          0
+          </td>
+          <td name = "mc34">
+          0
+          </td>
+        </tr>
+        <tr>
+          <td name = "mc41">
+          0
+          </td>
+          <td name = "mc42">
+          0
+          </td>
+          <td name = "mc43">
+          0
+          </td>
+          <td name = "mc44">
+          0
+          </td>
+        </tr>
+      </table> 
+      </div>
+    </div>
+   </body>
+</html>
