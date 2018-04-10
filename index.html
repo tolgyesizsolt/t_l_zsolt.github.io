@@ -714,6 +714,7 @@
       {
         document.getElementsByName("theta2")[0].innerHTML = RoundTo2Prec(rotdegree);
         robotkar2.matrixAutoUpdate = false;
+	robotkar2_1.matrixAutoUpdate = false;
         var rotation = degrees_to_radians(rotdegree);
         var part1transform = robotkar1.matrix.clone();
         var rotationalpha = new THREE.Matrix4().makeRotationX(degrees_to_radians(90));
@@ -721,24 +722,28 @@
         var rotationmatrix = new THREE.Matrix4().makeRotationZ(rotation);
         document.getElementsByName("B1")[0].innerHTML = RoundTo2Prec(vectorlength(0, 5.5348, 1.71449));
         robotkar2.matrix = part1transform.multiply(rotationalpha).multiply(translatematrix).multiply(rotationmatrix);
+	robotkar2_1.updateMatrix();
         part3transform(parameters.Part3rotation);
       }
       function part3transform(rotdegree)
       {
         document.getElementsByName("theta3")[0].innerHTML = RoundTo2Prec(rotdegree);
         robotkar3.matrixAutoUpdate = false;
+	robotkar3_1.matrixAutoUpdate = false;
         var rotation = degrees_to_radians(rotdegree);
         var part2transform = robotkar2.matrix.clone();
         var translatematrix = new THREE.Matrix4().makeTranslation ( 3.55838, 0, 1.74551 );
         var rotationmatrix = new THREE.Matrix4().makeRotationZ(rotation);
         document.getElementsByName("A2")[0].innerHTML = RoundTo2Prec(vectorlength( 3.55838, 0, 1.74551 ));
         robotkar3.matrix = part2transform.multiply(translatematrix).multiply(rotationmatrix);
+	robotkar3_1.updateMatrix();
         part4transform(parameters.Part4rotation);
       }
       function part4transform(rotdegree)
       {
         document.getElementsByName("theta4")[0].innerHTML = RoundTo2Prec(rotdegree);
         robotkar4.matrixAutoUpdate = false;
+	robotkar4_1.matrixAutoUpdate = false;
         var rotation = degrees_to_radians(rotdegree);
         var part3transform = robotkar3.matrix.clone();
         var rotationalpha = new THREE.Matrix4().makeRotationX(degrees_to_radians(-90));
@@ -746,18 +751,21 @@
         var rotationmatrix = new THREE.Matrix4().makeRotationZ(rotation);
         document.getElementsByName("A3")[0].innerHTML = RoundTo2Prec(vectorlength( 3.55838, 0, 1.74551 ));
         robotkar4.matrix = part3transform.multiply(rotationalpha).multiply(translatematrix).multiply(rotationmatrix);
+	robotkar4_1.updateMatrix();
         part5transform(parameters.Part5rotation);
       }
       function part5transform(rotdegree)
       {
         document.getElementsByName("theta5")[0].innerHTML = RoundTo2Prec(rotdegree);
         robotkar5.matrixAutoUpdate = false;
+	robotkar5_1.matrixAutoUpdate = false;
         var rotation = degrees_to_radians(rotdegree);
         var part4transform = robotkar4.matrix.clone();
         var translatematrix = new THREE.Matrix4().makeTranslation ( 3.55838, 0, 1.56682 );
         var rotationmatrix = new THREE.Matrix4().makeRotationZ(rotation);
         document.getElementsByName("A4")[0].innerHTML = RoundTo2Prec(vectorlength( 3.55838, 0, 1.56682 ));
         robotkar5.matrix = part4transform.multiply(translatematrix).multiply(rotationmatrix);
+	robotkar5_1.updateMatrix();
         partClamptransform(parameters.Clamp);
       }
       function partClamptransform(rotdegree)
